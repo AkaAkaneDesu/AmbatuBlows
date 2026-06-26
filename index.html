@@ -1,0 +1,2347 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraScan — Smart Receipt Scanner & Expense Logger</title>
+
+  <!-- Plus Jakarta Sans Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap"
+    rel="stylesheet">
+
+  <!-- Google Identity Services (GSI) SDK for OAuth 2.0 -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    /* ==========================================
+       DESIGN SYSTEM & COLOR SCHEME (OKLCH)
+       ========================================== */
+    :root {
+      color-scheme: light dark;
+
+      /* Sunset Orange Palette */
+      --brand-orange: oklch(0.65 0.22 35);
+      --brand-terracotta: oklch(0.53 0.15 35);
+      --brand-orange-light: light-dark(oklch(0.96 0.02 45), oklch(0.2 0.05 35));
+
+      /* Neutrals based on light-dark() */
+      --bg: light-dark(oklch(0.98 0.005 40), oklch(0.11 0.008 40));
+      --card-bg: light-dark(oklch(1 0 0), oklch(0.16 0.01 40));
+      --text: light-dark(oklch(0.2 0.01 40), oklch(0.95 0.005 40));
+      --text-muted: light-dark(oklch(0.55 0.01 40), oklch(0.7 0.01 40));
+      --border: light-dark(oklch(0.9 0.01 40), oklch(0.24 0.01 40));
+
+      /* Utilities */
+      --radius: 16px;
+      --radius-sm: 8px;
+      --radius-lg: 28px;
+      --transition-speed: 0.3s;
+      --max-width: 640px;
+    }
+
+    /* ==========================================
+       BASE STYLES & LAYOUT
+       ========================================== */
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: background-color var(--transition-speed), color var(--transition-speed);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    #app-container {
+      width: 100%;
+      max-width: var(--max-width);
+      min-height: 100vh;
+      box-sizing: border-box;
+      padding: 24px 20px 100px 20px;
+      /* Space for FAB */
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ==========================================
+       STARTUP OVERLAY
+       ========================================== */
+    #startup-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: radial-gradient(circle at top left, var(--card-bg), var(--bg));
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 32px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    #startup-overlay.hidden {
+      display: none;
+    }
+
+    .brand-logo-container {
+      margin-bottom: 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .brand-logo-sun {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand-orange), var(--brand-terracotta));
+      box-shadow: 0 12px 32px rgba(220, 95, 30, 0.25);
+      margin-bottom: 24px;
+    }
+
+    .brand-title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, var(--brand-orange), var(--brand-terracotta));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-subtitle {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin: 12px 0 0 0;
+      font-weight: 400;
+      line-height: 1.5;
+      max-width: 280px;
+    }
+
+    .startup-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+      max-width: 300px;
+    }
+
+    /* ==========================================
+       HEADER & PROFILE BAR
+       ========================================== */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .logo-text {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--brand-orange), var(--brand-terracotta));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+    }
+
+    .theme-toggle-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color var(--transition-speed);
+    }
+
+    .theme-toggle-btn:hover {
+      border-color: var(--brand-orange);
+    }
+
+    .user-profile-bar {
+      display: flex;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background-size: cover;
+      background-position: center;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+
+    .user-text {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .user-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .user-email {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* ==========================================
+       METRIC CARDS
+       ========================================== */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .metric-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .metric-card.full-on-mobile {
+      grid-column: span 2;
+    }
+
+    @media (min-width: 480px) {
+      .metrics-grid {
+        grid-template-columns: 1fr 1fr 1.2fr;
+      }
+
+      .metric-card.full-on-mobile {
+        grid-column: span 1;
+      }
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .metric-value {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--brand-orange);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ==========================================
+       CHARTS AND ANALYTICS
+       ========================================== */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin: 0 0 16px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      border-left: 3px solid var(--brand-orange);
+      padding-left: 8px;
+    }
+
+    /* SVG Monthly Trend Chart */
+    .trend-chart-container {
+      height: 130px;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .chart-rect {
+      transition: opacity var(--transition-speed), fill var(--transition-speed);
+      cursor: pointer;
+    }
+
+    .chart-rect:hover {
+      fill: var(--brand-terracotta);
+      opacity: 1;
+    }
+
+    /* Category Breakdown Progress Bars */
+    .category-breakdown-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .category-progress-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .category-progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .category-name {
+      color: var(--text);
+    }
+
+    .category-val {
+      color: var(--text-muted);
+    }
+
+    .category-progress-bar-bg {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .category-progress-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width var(--transition-speed) ease;
+    }
+
+    /* ==========================================
+       TRANSACTION FEED & LIST
+       ========================================== */
+    .feed-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .feed-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .feed-header h3 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .feed-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .search-input-wrapper {
+      position: relative;
+      grid-column: span 2;
+    }
+
+    @media (min-width: 480px) {
+      .feed-controls {
+        grid-template-columns: 2fr 1fr;
+      }
+
+      .search-input-wrapper {
+        grid-column: span 1;
+      }
+    }
+
+    .form-input {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.9rem;
+      width: 100%;
+      box-sizing: border-box;
+      transition: border-color var(--transition-speed);
+    }
+
+    .form-input:focus {
+      border-color: var(--brand-orange);
+      outline: none;
+    }
+
+    .transaction-list {
+      display: flex;
+      flex-direction: column;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .transaction-item {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background-color var(--transition-speed);
+      gap: 14px;
+    }
+
+    .transaction-item:last-child {
+      border-bottom: none;
+    }
+
+    .transaction-item:hover {
+      background-color: var(--brand-orange-light);
+    }
+
+    .tx-icon-wrapper {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .tx-icon-wrapper svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .tx-details {
+      flex-grow: 1;
+      min-width: 0;
+    }
+
+    .tx-merchant {
+      font-size: 0.95rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
+
+    .tx-meta {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tx-total {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--text);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .empty-icon {
+      color: var(--brand-orange);
+      opacity: 0.6;
+    }
+
+    /* ==========================================
+       BUTTONS & FLOATING ACTION BUTTON (FAB)
+       ========================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      font-family: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all var(--transition-speed);
+      box-sizing: border-box;
+    }
+
+    .btn-primary {
+      background: var(--brand-orange);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--brand-terracotta);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-outline:hover {
+      background: var(--brand-orange-light);
+      border-color: var(--brand-orange);
+    }
+
+    .btn-danger {
+      background: oklch(0.6 0.18 20);
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: oklch(0.5 0.15 20);
+    }
+
+    .btn-sm {
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      border-radius: var(--radius-sm);
+      gap: 6px;
+    }
+
+    .btn-lg {
+      padding: 14px 24px;
+      font-size: 1rem;
+      border-radius: var(--radius);
+      gap: 8px;
+    }
+
+    .btn-primary-outline {
+      background: transparent;
+      border: 1px solid var(--brand-orange);
+      color: var(--brand-orange);
+    }
+
+    .btn-primary-outline:hover {
+      background: var(--brand-orange-light);
+    }
+
+    /* FAB for receipts scanning */
+    .fab-wrapper {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: var(--max-width);
+      pointer-events: none;
+      z-index: 500;
+    }
+
+    .fab {
+      position: absolute;
+      bottom: 0;
+      right: 24px;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand-orange), var(--brand-terracotta));
+      color: #fff;
+      border: none;
+      box-shadow: 0 8px 24px rgba(220, 95, 30, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform var(--transition-speed) cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      pointer-events: auto;
+    }
+
+    .fab:active {
+      transform: scale(0.9);
+    }
+
+    .fab input[type="file"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .fab svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    /* ==========================================
+       NATIVE POPOVER (BOTTOM SLIDE-UP DRAWER)
+       ========================================== */
+    #drawer-popover {
+      border: none;
+      background: var(--card-bg);
+      color: var(--text);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
+      width: 100%;
+      max-width: var(--max-width);
+      margin: auto auto 0 auto;
+      /* Align to bottom center */
+      padding: 24px;
+      box-sizing: border-box;
+
+      /* Animation / Transition properties using starting-style */
+      transform: translateY(100%);
+      transition:
+        transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+        display 0.35s allow-discrete,
+        overlay 0.35s allow-discrete;
+    }
+
+    #drawer-popover:popover-open {
+      transform: translateY(0);
+    }
+
+    @starting-style {
+      #drawer-popover:popover-open {
+        transform: translateY(100%);
+      }
+    }
+
+    /* Popover Backdrop */
+    #drawer-popover::backdrop {
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      opacity: 0;
+      transition:
+        opacity 0.35s ease,
+        display 0.35s allow-discrete,
+        overlay 0.35s allow-discrete;
+    }
+
+    #drawer-popover:popover-open::backdrop {
+      opacity: 1;
+    }
+
+    @starting-style {
+      #drawer-popover:popover-open::backdrop {
+        opacity: 0;
+      }
+    }
+
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .drawer-category-tag {
+      padding: 6px 14px;
+      border-radius: 14px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .drawer-close-btn {
+      background: none;
+      border: none;
+      font-size: 1.8rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+    }
+
+    .drawer-body h3 {
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .drawer-amount {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--brand-orange);
+      margin: 10px 0;
+      letter-spacing: -0.03em;
+    }
+
+    .drawer-date {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .drawer-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 20px 0;
+    }
+
+    .drawer-section {
+      margin-bottom: 24px;
+    }
+
+    .drawer-section h4 {
+      margin: 0 0 10px 0;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .drawer-items-list {
+      padding-left: 20px;
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .drawer-items-list li {
+      margin-bottom: 4px;
+    }
+
+    /* Mock Receipt styling */
+    .mock-receipt {
+      background: #fdfdfa;
+      color: #2b2b28;
+      border: 1px solid #e2ded5;
+      padding: 16px;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    /* Force dark-mode compatibility with receipt colors */
+    [color-scheme="dark"] .mock-receipt {
+      background: #fafaf6;
+      color: #1a1a18;
+      border-color: #ddd;
+    }
+
+    .mock-receipt-header {
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 12px;
+      letter-spacing: 0.05em;
+    }
+
+    .mock-receipt-dashed {
+      border-top: 1px dashed #9b978d;
+      margin: 10px 0;
+    }
+
+    .mock-receipt-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mock-receipt-row {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .mock-receipt-row.bold {
+      font-weight: bold;
+    }
+
+    .mock-receipt-footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #666;
+      margin-top: 12px;
+      letter-spacing: 0.1em;
+    }
+
+    .drawer-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .drawer-actions .btn {
+      flex: 1;
+    }
+
+    /* ==========================================
+       NATIVE DIALOG MODAL (FULLSCREEN EDIT)
+       ========================================== */
+    dialog.edit-dialog {
+      border: none;
+      background: var(--card-bg);
+      color: var(--text);
+      padding: 24px;
+      box-sizing: border-box;
+
+      /* Animation Setup */
+      opacity: 0;
+      transform: scale(0.95);
+      transition:
+        opacity var(--transition-speed) ease,
+        transform var(--transition-speed) cubic-bezier(0.16, 1, 0.3, 1),
+        display var(--transition-speed) allow-discrete,
+        overlay var(--transition-speed) allow-discrete;
+    }
+
+    dialog.edit-dialog[open] {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    @starting-style {
+      dialog.edit-dialog[open] {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+    }
+
+    dialog.edit-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      opacity: 0;
+      transition:
+        opacity var(--transition-speed) ease,
+        display var(--transition-speed) allow-discrete,
+        overlay var(--transition-speed) allow-discrete;
+    }
+
+    dialog.edit-dialog[open]::backdrop {
+      opacity: 1;
+    }
+
+    @starting-style {
+      dialog.edit-dialog[open]::backdrop {
+        opacity: 0;
+      }
+    }
+
+    /* Fullscreen Dialog styling on mobile */
+    @media (max-width: 600px) {
+      dialog.edit-dialog {
+        width: 100vw;
+        height: 100dvh;
+        max-width: 100vw;
+        max-height: 100dvh;
+        border-radius: 0;
+        margin: 0;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      dialog.edit-dialog[open] {
+        display: flex;
+        flex-direction: column;
+      }
+
+      dialog.edit-dialog form {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .dialog-form-scroll {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding-bottom: 24px;
+      }
+
+      .dialog-form-actions {
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        gap: 12px;
+      }
+    }
+
+    /* Card Dialog styling on desktop */
+    @media (min-width: 601px) {
+      dialog.edit-dialog {
+        width: 90%;
+        max-width: 480px;
+        border-radius: var(--radius);
+        margin: auto;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+      }
+
+      dialog.edit-dialog[open] {
+        display: block;
+      }
+
+      .dialog-form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 24px;
+      }
+    }
+
+    .dialog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    .dialog-header h3 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .form-group-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ==========================================
+       SCANNING ANIMATION OVERLAY
+       ========================================== */
+    #scanning-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(6px);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #scanning-overlay.hidden {
+      display: none;
+    }
+
+    .scanning-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 32px 24px;
+      border-radius: var(--radius);
+      text-align: center;
+      width: 85%;
+      max-width: 300px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Terracotta loader loop */
+    .scanning-loader {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--brand-orange-light);
+      border-top-color: var(--brand-orange);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    .scanning-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      margin: 0 0 6px 0;
+    }
+
+    .scanning-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ==========================================
+       VIEW TRANSITIONS SUPPORT
+       ========================================== */
+    ::view-transition-old(root) {
+      animation: fade-out 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    ::view-transition-new(root) {
+      animation: fade-in 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes fade-out {
+      from {
+        opacity: 1;
+      }
+
+      to {
+        opacity: 0;
+      }
+    }
+
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .google-icon {
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- 1. STARTUP OVERLAY VIEW -->
+  <div id="startup-overlay">
+    <div class="brand-logo-container">
+      <div class="brand-logo-sun"></div>
+      <h1 class="brand-title">AuraScan</h1>
+      <p class="brand-subtitle">Smart Receipt Scanner & Expense Logger</p>
+    </div>
+
+    <div class="startup-actions">
+      <button class="btn btn-primary btn-lg" id="google-login-btn" onclick="enterApp('google')">
+        <!-- SVG Google Icon -->
+        <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18" fill="none"
+          xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" clip-rule="evenodd"
+            d="M23.745 12.2727C23.745 11.4273 23.669 10.6636 23.529 9.93636H12V14.5091H18.591C18.306 16.0364 17.447 17.3273 16.143 18.2045V21.1636H20.091C22.404 19.0364 23.745 15.9455 23.745 12.2727Z"
+            fill="#4285F4" />
+          <path fill-rule="evenodd" clip-rule="evenodd"
+            d="M12 24C15.24 24 17.955 22.9273 19.943 21.0909L16.036 17.9909C14.945 18.7273 13.568 19.1636 12 19.1636C8.873 19.1636 6.225 17.0636 5.28 14.2364H1.21V17.3909C3.193 21.3273 7.275 24 12 24Z"
+            fill="#34A853" />
+          <path fill-rule="evenodd" clip-rule="evenodd"
+            d="M5.28 14.2364C5.039 13.5273 4.904 12.7727 4.904 12C4.904 11.2273 5.039 10.4727 5.28 9.76364V6.60909H1.21C0.436 8.14545 0 9.87273 0 12C0 14.1273 0.436 15.8545 1.21 17.3909L5.28 14.2364Z"
+            fill="#FBBC05" />
+          <path fill-rule="evenodd" clip-rule="evenodd"
+            d="M12 4.83636C13.765 4.83636 15.344 5.44545 16.591 6.63636L20.024 3.20909C17.947 1.27273 15.232 0 12 0C7.275 0 3.193 2.67273 1.21 6.60909L5.28 9.76364C6.225 6.93636 8.873 4.83636 12 4.83636Z"
+            fill="#EA4335" />
+        </svg>
+        Login dengan Google
+      </button>
+
+      <button class="btn btn-outline btn-lg" onclick="enterApp('sandbox')">
+        Masuk Mode Sandbox
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. MAIN APPLICATION CONTAINER -->
+  <div id="app-container" class="hidden">
+
+    <!-- Top Header -->
+    <header class="app-header">
+      <h1 class="logo-text">AuraScan</h1>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn btn-sm btn-outline" id="mode-status-badge" onclick="toggleAppMode()"
+          style="border-radius: 20px; font-size: 0.75rem; padding: 6px 12px; gap: 6px; display: inline-flex; align-items: center; cursor: pointer; transition: all var(--transition-speed);">
+          <!-- Injected by JS -->
+        </button>
+        <button class="theme-toggle-btn" aria-label="Toggle Theme" onclick="toggleTheme()">
+          <!-- Moon Icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- User Profile Bar -->
+    <div class="user-profile-bar" id="user-profile-info">
+      <!-- Injected by JavaScript based on sandbox or login -->
+    </div>
+
+    <!-- Analytics Dashboard Cards -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-label">Total Spent</span>
+        <span class="metric-value" id="metric-total-spent">Rp 0</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">Avg Transaction</span>
+        <span class="metric-value" id="metric-avg-spent">Rp 0</span>
+      </div>
+
+      <div class="metric-card full-on-mobile">
+        <span class="metric-label">Top Merchant</span>
+        <span class="metric-value" id="metric-top-merchant">-</span>
+      </div>
+    </section>
+
+    <!-- Charts Panel -->
+    <section class="card">
+      <h3 class="card-title">Expense Trend</h3>
+      <div class="trend-chart-container" id="trend-chart-container">
+        <!-- SVG Chart Injected Here -->
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 class="card-title">Category Breakdown</h3>
+      <div class="category-breakdown-container" id="category-breakdown-container">
+        <!-- Progress Bars Injected Here -->
+      </div>
+    </section>
+
+    <!-- Transaction Feed -->
+    <section class="feed-section">
+      <div class="feed-header">
+        <h3>Riwayat Transaksi</h3>
+        <button class="btn btn-sm btn-outline" onclick="openEditDialog()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Manual
+        </button>
+      </div>
+
+      <div class="feed-controls">
+        <div class="search-input-wrapper">
+          <input type="text" id="search-input" class="form-input" placeholder="Cari merchant..."
+            oninput="filterTransactions()" />
+        </div>
+        <select id="category-filter" class="form-input" onchange="filterTransactions()">
+          <option value="all">Semua Kategori</option>
+          <option value="Food & Beverage">Food & Beverage</option>
+          <option value="Transportation">Transportation</option>
+          <option value="Shopping">Shopping</option>
+          <option value="Utilities">Utilities</option>
+          <option value="Entertainment">Entertainment</option>
+          <option value="Other">Kategori Lain</option>
+        </select>
+      </div>
+
+      <!-- Main transaction feed scroll area -->
+      <div class="transaction-list" id="transaction-list">
+        <!-- Rendered items -->
+      </div>
+    </section>
+
+    <!-- Floating Action Button for Scanning (FAB) -->
+    <div class="fab-wrapper">
+      <button class="fab" aria-label="Ambil Foto Struk">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+          <circle cx="12" cy="13" r="4" />
+        </svg>
+        <input type="file" accept="image/*" capture="environment" id="receipt-upload"
+          onchange="handleReceiptUpload(event)" />
+      </button>
+    </div>
+
+  </div>
+
+  <!-- 3. NATIVE POPOVER (SLIDE-UP DETAILS DRAWER) -->
+  <div id="drawer-popover" popover="auto">
+    <div class="drawer-header">
+      <span class="drawer-category-tag" id="drawer-category">Category</span>
+      <button class="drawer-close-btn" onclick="document.getElementById('drawer-popover').hidePopover()"
+        aria-label="Close">&times;</button>
+    </div>
+
+    <div class="drawer-body">
+      <h3 id="drawer-merchant">Merchant Name</h3>
+      <div class="drawer-amount" id="drawer-amount">Rp 0</div>
+      <div class="drawer-date" id="drawer-date">Tanggal Transaksi</div>
+
+      <hr class="drawer-divider" />
+
+      <div class="drawer-section" id="drawer-items-section">
+        <h4>Item Rincian</h4>
+        <ul class="drawer-items-list" id="drawer-items-list">
+          <!-- Injected dynamically -->
+        </ul>
+      </div>
+
+      <div class="drawer-section">
+        <h4>Simulasi Struk</h4>
+        <div class="mock-receipt">
+          <div class="mock-receipt-header">AURASCAN DIGITAL</div>
+          <div class="mock-receipt-dashed"></div>
+          <div class="mock-receipt-rows" id="mock-receipt-content">
+            <!-- Simulated printed lines -->
+          </div>
+          <div class="mock-receipt-dashed"></div>
+          <div class="mock-receipt-footer">TERIMA KASIH • RELEVAN & SAH</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-actions">
+      <button class="btn btn-outline" id="drawer-edit-btn">Edit</button>
+      <button class="btn btn-danger" id="drawer-delete-btn">Hapus</button>
+    </div>
+  </div>
+
+  <!-- 4. FULLSCREEN NATIVE DIALOG (TRANSACTION EDIT/ADD) -->
+  <dialog id="edit-dialog" class="edit-dialog">
+    <div class="dialog-header">
+      <h3 id="dialog-title">Ubah Transaksi</h3>
+      <button class="drawer-close-btn" onclick="document.getElementById('edit-dialog').close()"
+        aria-label="Close">&times;</button>
+    </div>
+
+    <form id="edit-form" onsubmit="handleFormSubmit(event)">
+      <div class="dialog-form-scroll">
+        <input type="hidden" id="edit-id" />
+
+        <div class="form-group">
+          <label for="edit-merchant">Merchant / Toko</label>
+          <input type="text" id="edit-merchant" class="form-input" required placeholder="Contoh: Kopi Kenangan" />
+        </div>
+
+        <div class="form-group-row">
+          <div class="form-group">
+            <label for="edit-date">Tanggal</label>
+            <input type="date" id="edit-date" class="form-input" required />
+          </div>
+
+          <div class="form-group">
+            <label for="edit-category">Kategori</label>
+            <select id="edit-category" class="form-input" required>
+              <option value="Food & Beverage">Food & Beverage</option>
+              <option value="Transportation">Transportation</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Other">Kategori Lain</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-total">Total Belanja (Rp)</label>
+          <input type="number" id="edit-total" class="form-input" required min="0" placeholder="Contoh: 45000" />
+        </div>
+
+        <div class="form-group">
+          <label for="edit-items">Rincian Item (Satu item per baris)</label>
+          <textarea id="edit-items" class="form-input" rows="4"
+            placeholder="Contoh:&#10;1x Kopi Susu Gula Aren&#10;1x Cinnamon Roll"></textarea>
+        </div>
+      </div>
+
+      <div class="dialog-form-actions">
+        <button type="button" class="btn btn-outline btn-lg"
+          onclick="document.getElementById('edit-dialog').close()">Batal</button>
+        <button type="submit" class="btn btn-primary btn-lg">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 5. SCANNING ANIMATION LOADER -->
+  <div id="scanning-overlay" class="hidden">
+    <div class="scanning-card">
+      <div class="scanning-loader"></div>
+      <h3 class="scanning-title" id="scanning-overlay-title">Memproses Struk...</h3>
+      <p class="scanning-desc" id="scanning-overlay-desc">Gemini OCR sedang mengekstrak detail belanja</p>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       CLIENT CONTROLLER JAVASCRIPT
+       ========================================== -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    // ponytail: Configuration settings for Google Cloud Integration
+    let OAUTH_CLIENT_ID = '414618681340-a80f8pjvf3m8er3dq0vpu5ah8ipd10m9.apps.googleusercontent.com'; // Leave blank to prompt on runtime or edit directly
+
+    let appMode = 'sandbox'; // ponytail: 'sandbox' or 'cloud'
+    let spreadsheetId = null;
+    let transactions = [];
+    let currentSelectedTxId = null;
+
+    // Load initial mockup if local storage is empty
+    const DEFAULT_MOCK = [
+      { id: 'tx-1', merchant: 'Kopi Kenangan', date: '2026-06-25', category: 'Food & Beverage', total: 45000, items: ['2x Kopi Susu Aren (L)', '1x Roti Cokelat Klasik'] },
+      { id: 'tx-2', merchant: 'Grab Ride', date: '2026-06-24', category: 'Transportation', total: 22000, items: ['Perjalanan GrabBike ke Kantor'] },
+      { id: 'tx-3', merchant: 'Tokopedia Store', date: '2026-06-23', category: 'Shopping', total: 189000, items: ['1x USB-C Adapter Hub', '1x Phone Stand Metal'] },
+      { id: 'tx-4', merchant: 'PLN Prabayar', date: '2026-06-20', category: 'Utilities', total: 250000, items: ['Token Listrik Prabayar 250k'] },
+      { id: 'tx-5', merchant: 'CGV Grand Indonesia', date: '2026-06-18', category: 'Entertainment', total: 110000, items: ['2x Cinema Ticket - Dune Part 2'] },
+      { id: 'tx-6', merchant: 'Ayam Geprek Keprabon', date: '2026-05-15', category: 'Food & Beverage', total: 65000, items: ['2x Paket Geprek Blenger', '2x Es Teh Manis'] },
+      { id: 'tx-7', merchant: 'Uniqlo Mall', date: '2026-04-10', category: 'Shopping', total: 499000, items: ['1x Airism Parka Jacket'] },
+      { id: 'tx-8', merchant: 'Indomaret Point', date: '2026-03-22', category: 'Food & Beverage', total: 32000, items: ['1x Roti Kasur', '1x Aqua 1.5L'] },
+      { id: 'tx-9', merchant: 'Pertamina SPBU', date: '2026-02-12', category: 'Transportation', total: 150000, items: ['Bahan Bakar Pertamax 15L'] }
+    ];
+
+    // ==========================================
+    // INITIALIZATION & SESSION RESTORE
+    // ==========================================
+    // ponytail: Checks for existing OAuth token on load to automatically restore the Cloud Mode state.
+    window.addEventListener('load', async () => {
+      const token = sessionStorage.getItem('aurascan_access_token');
+      const clientId = localStorage.getItem('aurascan_client_id');
+      if (token && clientId) {
+        showLoader("Menghubungkan ke Cloud...", "Memuat data dari Google Sheets");
+        appMode = 'cloud';
+        spreadsheetId = sessionStorage.getItem('aurascan_spreadsheet_id');
+        try {
+          await fetchTransactionsFromSheets();
+
+          const overlay = document.getElementById('startup-overlay');
+          const container = document.getElementById('app-container');
+          overlay.classList.add('hidden');
+          container.classList.remove('hidden');
+          updateAllUI();
+        } catch (e) {
+          console.error("Auto-login failed:", e);
+          sessionStorage.removeItem('aurascan_access_token');
+          appMode = 'sandbox';
+          alert("Gagal memulihkan sesi Google Cloud. Beralih ke Mode Sandbox.");
+        } finally {
+          hideLoader();
+        }
+      }
+    });
+
+    function initData() {
+      // ponytail: Local storage fallback simulates a cloud database to make this prototype immediately interactive without configuration.
+      const stored = localStorage.getItem('aurascan_transactions');
+      if (stored) {
+        transactions = JSON.parse(stored);
+      } else {
+        transactions = [...DEFAULT_MOCK];
+        localStorage.setItem('aurascan_transactions', JSON.stringify(transactions));
+      }
+    }
+
+    function saveToStorage() {
+      localStorage.setItem('aurascan_transactions', JSON.stringify(transactions));
+    }
+
+    function transitionView(callback) {
+      // ponytail: Native view transitions API enables fluid screen changes with zero dependencies.
+      if (document.startViewTransition) {
+        document.startViewTransition(callback);
+      } else {
+        callback();
+      }
+    }
+
+    // ==========================================
+    // LOADER CONTROL
+    // ==========================================
+    function showLoader(title, desc) {
+      document.getElementById('scanning-overlay-title').innerText = title;
+      document.getElementById('scanning-overlay-desc').innerText = desc;
+      document.getElementById('scanning-overlay').classList.remove('hidden');
+    }
+
+    function hideLoader() {
+      document.getElementById('scanning-overlay').classList.add('hidden');
+    }
+
+    // ==========================================
+    // GOOGLE OAUTH 2.0 & SHEETS DB CLIENT
+    // ==========================================
+    async function handleGoogleLoginClick() {
+      let clientId = OAUTH_CLIENT_ID || localStorage.getItem('aurascan_client_id');
+      if (!clientId) {
+        clientId = prompt("Masukkan Google OAuth Client ID Anda (lihat oauth_setup.md untuk panduan):\nID ini akan disimpan secara lokal untuk sesi berikutnya.");
+        if (!clientId) return;
+        clientId = clientId.trim();
+        localStorage.setItem('aurascan_client_id', clientId);
+      }
+      loginWithGoogle(clientId);
+    }
+
+    function loginWithGoogle(clientId) {
+      if (typeof google === 'undefined' || !google.accounts) {
+        alert("Gagal memuat Google Identity Services SDK. Periksa koneksi internet Anda.");
+        return;
+      }
+
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/generative-language.tuning https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+        callback: async (tokenResponse) => {
+          if (tokenResponse.error !== undefined) {
+            alert("Gagal melakukan login Google: " + tokenResponse.error);
+            return;
+          }
+
+          const accessToken = tokenResponse.access_token;
+          sessionStorage.setItem('aurascan_access_token', accessToken);
+          localStorage.setItem('aurascan_client_id', clientId);
+
+          showLoader("Mengambil Profil...", "Menghubungkan ke profil Google");
+          try {
+            const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            if (profileRes.ok) {
+              const profile = await profileRes.json();
+              sessionStorage.setItem('aurascan_user_profile', JSON.stringify(profile));
+            }
+          } catch (e) {
+            console.error("Error fetching user profile:", e);
+          }
+
+          await enterApp('cloud');
+        },
+      });
+
+      tokenClient.requestAccessToken({ prompt: 'consent' });
+    }
+
+    // ponytail: Async Google API requests use standard fetch with Authorization headers instead of importing heavy client libraries.
+    async function sheetsRequest(url, method = 'GET', body = null) {
+      const token = sessionStorage.getItem('aurascan_access_token');
+      if (!token) throw new Error("Sesi login berakhir. Silakan hubungkan kembali akun Google Anda.");
+
+      const options = {
+        method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      };
+      if (body) {
+        options.body = JSON.stringify(body);
+      }
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Google API Error (${response.status}): ${errorText}`);
+      }
+      return response.json();
+    }
+
+    async function initSheetsDatabase() {
+      // ponytail: Google Drive files query locates existing spreadsheet by title and mimeType to avoid duplicates.
+      const searchUrl = `https://www.googleapis.com/drive/v3/files?q=name='Cloud Expense Tracker Data' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
+      const searchRes = await sheetsRequest(searchUrl);
+
+      if (searchRes.files && searchRes.files.length > 0) {
+        spreadsheetId = searchRes.files[0].id;
+      } else {
+        const createUrl = `https://sheets.googleapis.com/v4/spreadsheets`;
+        const createBody = {
+          properties: {
+            title: "Cloud Expense Tracker Data"
+          }
+        };
+        const createRes = await sheetsRequest(createUrl, 'POST', createBody);
+        spreadsheetId = createRes.spreadsheetId;
+
+        const writeHeadersUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1:F1?valueInputOption=RAW`;
+        const headersBody = {
+          values: [["ID", "Date", "Merchant", "Items", "Total", "Category"]]
+        };
+        await sheetsRequest(writeHeadersUrl, 'PUT', headersBody);
+      }
+
+      sessionStorage.setItem('aurascan_spreadsheet_id', spreadsheetId);
+    }
+
+    async function fetchTransactionsFromSheets() {
+      if (!spreadsheetId) await initSheetsDatabase();
+      const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A2:F`;
+      const getRes = await sheetsRequest(getUrl);
+
+      const rows = getRes.values || [];
+      transactions = rows.map(row => {
+        if (!row || row.length === 0) return { id: null };
+        return {
+          id: row[0] || null,
+          date: row[1] || '',
+          merchant: row[2] || '',
+          items: row[3] ? row[3].split(',').map(s => s.trim()) : [],
+          total: parseInt(row[4]) || 0,
+          category: row[5] || 'Other'
+        };
+      }).filter(tx => tx.id);
+
+      return transactions;
+    }
+
+    async function appendTransactionToSheets(tx) {
+      if (!spreadsheetId) await initSheetsDatabase();
+      const appendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1:append?valueInputOption=RAW`;
+      const appendBody = {
+        values: [
+          [tx.id, tx.date, tx.merchant, tx.items.join(', '), tx.total, tx.category]
+        ]
+      };
+      await sheetsRequest(appendUrl, 'POST', appendBody);
+    }
+
+    async function findRowIndexById(id) {
+      if (!spreadsheetId) await initSheetsDatabase();
+      const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A:A`;
+      const getRes = await sheetsRequest(getUrl);
+      const rows = getRes.values || [];
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i][0] === id) {
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    async function updateTransactionInSheets(tx) {
+      const rowIndex = await findRowIndexById(tx.id);
+      if (rowIndex === -1) {
+        await appendTransactionToSheets(tx);
+        return;
+      }
+      const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A${rowIndex + 1}:F${rowIndex + 1}?valueInputOption=RAW`;
+      const updateBody = {
+        values: [
+          [tx.id, tx.date, tx.merchant, tx.items.join(', '), tx.total, tx.category]
+        ]
+      };
+      await sheetsRequest(updateUrl, 'PUT', updateBody);
+    }
+
+    async function deleteTransactionFromSheets(id) {
+      const rowIndex = await findRowIndexById(id);
+      if (rowIndex === -1) return;
+      const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A${rowIndex + 1}:F${rowIndex + 1}:clear`;
+      await sheetsRequest(clearUrl, 'POST');
+    }
+
+    // ==========================================
+    // VIEW ROUTING
+    // ==========================================
+    async function enterApp(mode) {
+      const overlay = document.getElementById('startup-overlay');
+      const container = document.getElementById('app-container');
+
+      if (mode === 'google') {
+        await handleGoogleLoginClick();
+        return;
+      }
+
+      appMode = mode;
+
+      if (mode === 'cloud') {
+        showLoader("Menghubungkan ke Cloud...", "Memuat data dari Google Sheets");
+        try {
+          await fetchTransactionsFromSheets();
+        } catch (e) {
+          console.error(e);
+          alert("Gagal memuat data dari Google Sheets. Beralih ke Mode Sandbox.\nError: " + e.message);
+          appMode = 'sandbox';
+          initData();
+        } finally {
+          hideLoader();
+        }
+      } else {
+        initData();
+      }
+
+      transitionView(() => {
+        overlay.classList.add('hidden');
+        container.classList.remove('hidden');
+        updateAllUI();
+      });
+    }
+
+    function logout() {
+      sessionStorage.removeItem('aurascan_access_token');
+      sessionStorage.removeItem('aurascan_user_profile');
+      appMode = 'sandbox';
+
+      transitionView(() => {
+        document.getElementById('startup-overlay').classList.remove('hidden');
+        document.getElementById('app-container').classList.add('hidden');
+      });
+    }
+
+    async function toggleAppMode() {
+      if (appMode === 'sandbox') {
+        const token = sessionStorage.getItem('aurascan_access_token');
+        const clientId = localStorage.getItem('aurascan_client_id');
+        if (token && clientId) {
+          showLoader("Menghubungkan ke Cloud...", "Memuat data dari Google Sheets");
+          try {
+            appMode = 'cloud';
+            await fetchTransactionsFromSheets();
+            updateAllUI();
+          } catch (e) {
+            console.error(e);
+            sessionStorage.removeItem('aurascan_access_token');
+            alert("Sesi Google Cloud berakhir. Silakan login kembali.");
+            await handleGoogleLoginClick();
+          } finally {
+            hideLoader();
+          }
+        } else {
+          await handleGoogleLoginClick();
+        }
+      } else {
+        appMode = 'sandbox';
+        initData();
+        updateAllUI();
+      }
+    }
+
+    // ==========================================
+    // THEME MANAGEMENT
+    // ==========================================
+    function toggleTheme() {
+      const activeTheme = document.documentElement.style.colorScheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.style.colorScheme = activeTheme;
+      localStorage.setItem('theme', activeTheme);
+      updateThemeIcon(activeTheme);
+    }
+
+    function updateThemeIcon(theme) {
+      const btn = document.querySelector('.theme-toggle-btn');
+      if (theme === 'dark') {
+        btn.innerHTML = `
+          <!-- Sun Icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        `;
+      } else {
+        btn.innerHTML = `
+          <!-- Moon Icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        `;
+      }
+    }
+
+    const initialTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.style.colorScheme = initialTheme;
+    updateThemeIcon(initialTheme);
+
+    // ==========================================
+    // CURRENCY & FORMATTING
+    // ==========================================
+    function formatRupiah(val) {
+      return 'Rp ' + val.toLocaleString('id-ID');
+    }
+
+    function formatRupiahShort(value) {
+      if (value >= 1000000) {
+        return (value / 1000000).toFixed(1).replace('.0', '') + 'jt';
+      }
+      if (value >= 1000) {
+        return (value / 1000).toFixed(0) + 'rb';
+      }
+      return value.toString();
+    }
+
+    function formatDate(dateStr) {
+      const parts = dateStr.split('-');
+      if (parts.length !== 3) return dateStr;
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      return `${parseInt(parts[2])} ${monthNames[parseInt(parts[1]) - 1]} ${parts[0]}`;
+    }
+
+    // ==========================================
+    // METRICS RENDERING
+    // ==========================================
+    function renderMetrics() {
+      const total = transactions.reduce((sum, tx) => sum + tx.total, 0);
+      const avg = transactions.length > 0 ? Math.round(total / transactions.length) : 0;
+
+      const visits = {};
+      transactions.forEach(t => {
+        visits[t.merchant] = (visits[t.merchant] || 0) + 1;
+      });
+
+      let topMerchant = '-';
+      let maxVisits = 0;
+      Object.entries(visits).forEach(([name, count]) => {
+        if (count > maxVisits) {
+          maxVisits = count;
+          topMerchant = name;
+        }
+      });
+
+      document.getElementById('metric-total-spent').innerText = formatRupiah(total);
+      document.getElementById('metric-avg-spent').innerText = formatRupiah(avg);
+      document.getElementById('metric-top-merchant').innerText = maxVisits > 0 ? `${topMerchant} (${maxVisits}x)` : '-';
+    }
+
+    // ==========================================
+    // SVG CHART RENDERING (Expense Trend)
+    // ==========================================
+    // ponytail: SVG bar charts rendered with standard DOM methods replace bloated chart libraries.
+    function getLastSixMonths() {
+      const result = [];
+      const d = new Date();
+      const baseYear = 2026;
+      const baseMonth = 5; // June (0-indexed is 5)
+
+      for (let i = 5; i >= 0; i--) {
+        const targetDate = new Date(baseYear, baseMonth - i, 1);
+        const label = targetDate.toLocaleString('id-ID', { month: 'short' });
+        const key = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+        result.push({ label, key, total: 0 });
+      }
+      return result;
+    }
+
+    function renderTrendChart() {
+      const monthlyData = getLastSixMonths();
+      transactions.forEach(tx => {
+        const monthKey = tx.date.substring(0, 7);
+        const match = monthlyData.find(m => m.key === monthKey);
+        if (match) {
+          match.total += tx.total;
+        }
+      });
+
+      const maxVal = Math.max(...monthlyData.map(m => m.total), 100000);
+      const chartHeight = 90;
+      const barWidth = 32;
+      const gap = 18;
+      const paddingLeft = 24;
+
+      let barsHTML = '';
+      monthlyData.forEach((m, idx) => {
+        const barHeight = (m.total / maxVal) * chartHeight;
+        const x = paddingLeft + idx * (barWidth + gap);
+        const y = chartHeight - barHeight + 10;
+
+        barsHTML += `
+          <g>
+            <rect class="chart-rect" x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" fill="var(--brand-orange)" opacity="0.85">
+              <title>${m.label}: ${formatRupiah(m.total)}</title>
+            </rect>
+            <text x="${x + barWidth / 2}" y="${chartHeight + 26}" text-anchor="middle" font-size="10" fill="var(--text-muted)" font-family="inherit">${m.label}</text>
+            <text x="${x + barWidth / 2}" y="${y - 6}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--text)" font-family="inherit">${formatRupiahShort(m.total)}</text>
+          </g>
+        `;
+      });
+
+      document.getElementById('trend-chart-container').innerHTML = `
+        <svg viewBox="0 0 340 130" width="100%" height="100%">
+          ${barsHTML}
+        </svg>
+      `;
+    }
+
+    // ==========================================
+    // CATEGORY BREAKDOWN PROGRESS BARS
+    // ==========================================
+    function renderCategoryBreakdown() {
+      const categoryTotals = {};
+      let netTotal = 0;
+
+      transactions.forEach(tx => {
+        categoryTotals[tx.category] = (categoryTotals[tx.category] || 0) + tx.total;
+        netTotal += tx.total;
+      });
+
+      const sorted = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+      const container = document.getElementById('category-breakdown-container');
+
+      if (netTotal === 0) {
+        container.innerHTML = `<div class="empty-state">Belum ada data pengeluaran.</div>`;
+        return;
+      }
+
+      const colors = {
+        'Food & Beverage': 'oklch(0.65 0.22 35)',
+        'Transportation': 'oklch(0.55 0.16 45)',
+        'Shopping': 'oklch(0.72 0.18 55)',
+        'Utilities': 'oklch(0.5 0.12 30)',
+        'Entertainment': 'oklch(0.6 0.2 20)',
+        'Other': 'oklch(0.65 0.05 40)'
+      };
+
+      let html = '';
+      sorted.forEach(([cat, val]) => {
+        const percent = Math.round((val / netTotal) * 100);
+        const color = colors[cat] || 'var(--brand-terracotta)';
+        html += `
+          <div class="category-progress-item">
+            <div class="category-progress-info">
+              <span class="category-name">${cat}</span>
+              <span class="category-val">${percent}% (${formatRupiahShort(val)})</span>
+            </div>
+            <div class="category-progress-bar-bg">
+              <div class="category-progress-bar-fill" style="width: ${percent}%; background: ${color}"></div>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    // ==========================================
+    // TRANSACTION LIST FEED
+    // ==========================================
+    function renderTransactionList() {
+      const listContainer = document.getElementById('transaction-list');
+      const query = document.getElementById('search-input').value.toLowerCase();
+      const filter = document.getElementById('category-filter').value;
+
+      const filtered = transactions.filter(t => {
+        const matchQuery = t.merchant.toLowerCase().includes(query) || t.category.toLowerCase().includes(query);
+        const matchFilter = filter === 'all' || t.category === filter;
+        return matchQuery && matchFilter;
+      });
+
+      if (filtered.length === 0) {
+        listContainer.innerHTML = `
+          <div class="empty-state">
+            <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            <p>Tidak ada transaksi yang sesuai</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Sort chronological descending
+      const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
+
+      const icons = {
+        'Food & Beverage': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+        'Transportation': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
+        'Shopping': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>`,
+        'Utilities': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+        'Entertainment': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>`,
+        'Other': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`
+      };
+
+      const colors = {
+        'Food & Beverage': 'oklch(0.65 0.22 35)',
+        'Transportation': 'oklch(0.55 0.16 45)',
+        'Shopping': 'oklch(0.72 0.18 55)',
+        'Utilities': 'oklch(0.5 0.12 30)',
+        'Entertainment': 'oklch(0.6 0.2 20)',
+        'Other': 'oklch(0.65 0.05 40)'
+      };
+
+      listContainer.innerHTML = sorted.map(t => {
+        const col = colors[t.category] || 'var(--brand-terracotta)';
+        const lightBg = t.category === 'Food & Beverage' ? 'oklch(0.95 0.03 45)' :
+          t.category === 'Transportation' ? 'oklch(0.94 0.02 55)' :
+            t.category === 'Shopping' ? 'oklch(0.96 0.02 75)' :
+              t.category === 'Utilities' ? 'oklch(0.93 0.02 35)' :
+                t.category === 'Entertainment' ? 'oklch(0.94 0.02 25)' : 'oklch(0.95 0.01 40)';
+
+        return `
+          <div class="transaction-item" onclick="openDetails('${t.id}')">
+            <div class="tx-icon-wrapper" style="color: ${col}; background: ${lightBg}">
+              ${icons[t.category] || icons['Other']}
+            </div>
+            <div class="tx-details">
+              <div class="tx-merchant">${t.merchant}</div>
+              <div class="tx-meta">${formatDate(t.date)} • ${t.category}</div>
+            </div>
+            <div class="tx-total">${formatRupiah(t.total)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function filterTransactions() {
+      renderTransactionList();
+    }
+
+    // ==========================================
+    // DETAIL POPOVER DRAWER CONTROLS
+    // ==========================================
+    function openDetails(txId) {
+      const tx = transactions.find(t => t.id === txId);
+      if (!tx) return;
+
+      currentSelectedTxId = txId;
+      const popover = document.getElementById('drawer-popover');
+
+      const tag = document.getElementById('drawer-category');
+      tag.innerText = tx.category;
+
+      const colors = {
+        'Food & Beverage': ['oklch(0.65 0.22 35)', 'oklch(0.95 0.03 45)'],
+        'Transportation': ['oklch(0.55 0.16 45)', 'oklch(0.94 0.02 55)'],
+        'Shopping': ['oklch(0.72 0.18 55)', 'oklch(0.96 0.02 75)'],
+        'Utilities': ['oklch(0.5 0.12 30)', 'oklch(0.93 0.02 35)'],
+        'Entertainment': ['oklch(0.6 0.2 20)', 'oklch(0.94 0.02 25)'],
+        'Other': ['oklch(0.65 0.05 40)', 'oklch(0.95 0.01 40)']
+      };
+      const activeColors = colors[tx.category] || colors['Other'];
+      tag.style.color = activeColors[0];
+      tag.style.background = activeColors[1];
+
+      document.getElementById('drawer-merchant').innerText = tx.merchant;
+      document.getElementById('drawer-amount').innerText = formatRupiah(tx.total);
+      document.getElementById('drawer-date').innerText = `${formatDate(tx.date)} • Terverifikasi`;
+
+      const listElement = document.getElementById('drawer-items-list');
+      const itemsSection = document.getElementById('drawer-items-section');
+
+      if (tx.items && tx.items.length > 0) {
+        itemsSection.style.display = 'block';
+        listElement.innerHTML = tx.items.map(item => `<li>${item}</li>`).join('');
+      } else {
+        itemsSection.style.display = 'none';
+      }
+
+      const receiptContent = document.getElementById('mock-receipt-content');
+      let receiptRowsHTML = `
+        <div class="mock-receipt-row"><span>Toko:</span> <span>${tx.merchant}</span></div>
+        <div class="mock-receipt-row"><span>Tgl:</span> <span>${tx.date}</span></div>
+        <div class="mock-receipt-row"><span>Kat:</span> <span>${tx.category}</span></div>
+        <div class="mock-receipt-dashed"></div>
+      `;
+
+      if (tx.items && tx.items.length > 0) {
+        tx.items.forEach(it => {
+          receiptRowsHTML += `<div class="mock-receipt-row"><span>${it}</span></div>`;
+        });
+        receiptRowsHTML += `<div class="mock-receipt-dashed"></div>`;
+      }
+
+      receiptRowsHTML += `<div class="mock-receipt-row bold"><span>TOTAL:</span> <span>${formatRupiah(tx.total)}</span></div>`;
+      receiptContent.innerHTML = receiptRowsHTML;
+
+      document.getElementById('drawer-edit-btn').onclick = () => {
+        popover.hidePopover();
+        openEditDialog(txId);
+      };
+
+      document.getElementById('drawer-delete-btn').onclick = () => {
+        if (confirm('Hapus transaksi ini dari log?')) {
+          deleteTransaction(txId);
+          popover.hidePopover();
+        }
+      };
+
+      popover.showPopover();
+    }
+
+    async function deleteTransaction(txId) {
+      if (appMode === 'cloud') {
+        showLoader("Menghapus...", "Menghapus transaksi dari Google Sheets");
+        try {
+          await deleteTransactionFromSheets(txId);
+          transactions = transactions.filter(t => t.id !== txId);
+          updateAllUI();
+        } catch (e) {
+          alert("Gagal menghapus transaksi dari cloud: " + e.message);
+        } finally {
+          hideLoader();
+        }
+      } else {
+        transactions = transactions.filter(t => t.id !== txId);
+        saveToStorage();
+        updateAllUI();
+      }
+    }
+
+    // ==========================================
+    // DIALOG MODAL (ADD & EDIT FORM)
+    // ==========================================
+    function openEditDialog(txId = null) {
+      const dialog = document.getElementById('edit-dialog');
+      const title = document.getElementById('dialog-title');
+      const form = document.getElementById('edit-form');
+
+      form.reset();
+      document.getElementById('edit-id').value = '';
+
+      if (txId) {
+        const tx = transactions.find(t => t.id === txId);
+        if (!tx) return;
+
+        title.innerText = 'Ubah Transaksi';
+        document.getElementById('edit-id').value = tx.id;
+        document.getElementById('edit-merchant').value = tx.merchant;
+        document.getElementById('edit-date').value = tx.date;
+        document.getElementById('edit-category').value = tx.category;
+        document.getElementById('edit-total').value = tx.total;
+        document.getElementById('edit-items').value = tx.items ? tx.items.join('\n') : '';
+      } else {
+        title.innerText = 'Tambah Manual';
+        document.getElementById('edit-date').value = new Date().toISOString().substring(0, 10);
+      }
+
+      dialog.showModal();
+    }
+
+    async function handleFormSubmit(event) {
+      event.preventDefault();
+
+      const id = document.getElementById('edit-id').value;
+      const merchant = document.getElementById('edit-merchant').value;
+      const date = document.getElementById('edit-date').value;
+      const category = document.getElementById('edit-category').value;
+      const total = parseInt(document.getElementById('edit-total').value) || 0;
+      const itemsRaw = document.getElementById('edit-items').value;
+      const items = itemsRaw ? itemsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+
+      const txData = { id: id || ('tx-' + Date.now()), merchant, date, category, total, items };
+
+      if (appMode === 'cloud') {
+        showLoader("Menyimpan...", "Menulis data ke Google Sheets");
+        try {
+          if (id) {
+            await updateTransactionInSheets(txData);
+            const idx = transactions.findIndex(t => t.id === id);
+            if (idx !== -1) transactions[idx] = txData;
+          } else {
+            await appendTransactionToSheets(txData);
+            transactions.push(txData);
+          }
+          updateAllUI();
+          document.getElementById('edit-dialog').close();
+        } catch (e) {
+          alert("Gagal menyimpan transaksi ke cloud: " + e.message);
+        } finally {
+          hideLoader();
+        }
+      } else {
+        if (id) {
+          const idx = transactions.findIndex(t => t.id === id);
+          if (idx !== -1) transactions[idx] = txData;
+        } else {
+          transactions.push(txData);
+        }
+        saveToStorage();
+        updateAllUI();
+        document.getElementById('edit-dialog').close();
+      }
+    }
+
+    // ==========================================
+    // CAMERA / IMAGE UPLOAD SCANNING (FAB)
+    // ==========================================
+    // ponytail: Image upload event triggers either client-side mock or Gemini Vision REST call.
+    async function handleReceiptUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const fileInput = event.target;
+
+      if (appMode === 'cloud') {
+        showLoader("Menganalisis Struk...", "Gemini sedang mengekstrak detail belanja");
+        try {
+          const result = await scanReceiptWithGemini(file);
+          fileInput.value = '';
+          hideLoader();
+
+          const dialog = document.getElementById('edit-dialog');
+          document.getElementById('dialog-title').innerText = 'Verifikasi Hasil Scan';
+          document.getElementById('edit-id').value = '';
+          document.getElementById('edit-merchant').value = result.merchant || '';
+          document.getElementById('edit-date').value = (result.date && /^\d{4}-\d{2}-\d{2}$/.test(result.date)) ? result.date : new Date().toISOString().substring(0, 10);
+          document.getElementById('edit-category').value = normaliseCategory(result.category);
+          document.getElementById('edit-total').value = result.total || 0;
+
+          let itemsText = '';
+          if (result.items) {
+            if (Array.isArray(result.items)) {
+              itemsText = result.items.join('\n');
+            } else {
+              itemsText = result.items.split(',').map(s => s.trim()).join('\n');
+            }
+          }
+          document.getElementById('edit-items').value = itemsText;
+
+          dialog.showModal();
+        } catch (e) {
+          fileInput.value = '';
+          hideLoader();
+          alert("Gagal memproses struk dengan Gemini: " + e.message);
+        }
+      } else {
+        // ponytail: Image upload event triggers a mock scanning delay to simulate Gemini OCR.
+        showLoader("Memproses Struk...", "Mode Sandbox menggunakan pencocokan pola nama file");
+
+        setTimeout(() => {
+          hideLoader();
+          const match = mockExtractReceipt(file.name);
+          fileInput.value = '';
+
+          const dialog = document.getElementById('edit-dialog');
+          document.getElementById('dialog-title').innerText = 'Verifikasi Hasil Scan (Sandbox)';
+          document.getElementById('edit-id').value = '';
+          document.getElementById('edit-merchant').value = match.merchant;
+          document.getElementById('edit-date').value = match.date;
+          document.getElementById('edit-category').value = match.category;
+          document.getElementById('edit-total').value = match.total;
+          document.getElementById('edit-items').value = match.items.split(',').map(s => s.trim()).join('\n');
+
+          dialog.showModal();
+        }, 1500);
+      }
+    }
+
+    // ponytail: Direct Gemini REST endpoint handles vision OCR with structured JSON output response configuration.
+    async function scanReceiptWithGemini(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          try {
+            const base64Data = reader.result.split(',')[1];
+            const mimeType = file.type;
+            const token = sessionStorage.getItem('aurascan_access_token');
+
+            const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    parts: [
+                      {
+                        text: "Analyze this receipt image and output structured JSON. Output ONLY raw JSON. Do not write any markdown code blocks. The JSON keys and types must be strictly as follows:\n" +
+                          "{\n" +
+                          "  \"merchant\": string,\n" +
+                          "  \"date\": \"YYYY-MM-DD\",\n" +
+                          "  \"items\": string (comma-separated list of items bought),\n" +
+                          "  \"total\": number (numeric value only),\n" +
+                          "  \"category\": \"Food & Beverage\" | \"Transportation\" | \"Shopping\" | \"Utilities\" | \"Entertainment\" | \"Other\"\n" +
+                          "}"
+                      },
+                      {
+                        inlineData: {
+                          mimeType: mimeType,
+                          data: base64Data
+                        }
+                      }
+                    ]
+                  }
+                ],
+                generationConfig: {
+                  responseMimeType: "application/json"
+                }
+              })
+            });
+
+            if (!response.ok) {
+              const err = await response.text();
+              throw new Error(`Gemini API Error: ${err}`);
+            }
+
+            const data = await response.json();
+            let text = data.candidates[0].content.parts[0].text;
+
+            // ponytail: Raw text is parsed and sanitized to avoid JSON syntax formatting failures.
+            if (text.startsWith("```json")) {
+              text = text.substring(7);
+            }
+            if (text.endsWith("```")) {
+              text = text.substring(0, text.length - 3);
+            }
+            text = text.trim();
+            const parsed = JSON.parse(text);
+            resolve(parsed);
+          } catch (e) {
+            reject(e);
+          }
+        };
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // ponytail: Category helper Normalises variations in Gemini responses to standard dashboard categories.
+    function normaliseCategory(cat) {
+      if (!cat) return 'Other';
+      const c = cat.toLowerCase();
+      if (c.includes('food') || c.includes('beverage') || c.includes('makan') || c.includes('minum') || c.includes('resto') || c.includes('cafe')) return 'Food & Beverage';
+      if (c.includes('transport') || c.includes('grab') || c.includes('ride') || c.includes('car') || c.includes('fuel') || c.includes('spbu') || c.includes('bensin')) return 'Transportation';
+      if (c.includes('shop') || c.includes('belanja') || c.includes('store') || c.includes('mall') || c.includes('baju') || c.includes('clothe')) return 'Shopping';
+      if (c.includes('utilit') || c.includes('pln') || c.includes('listrik') || c.includes('air') || c.includes('pdam') || c.includes('phone') || c.includes('pulsa')) return 'Utilities';
+      if (c.includes('entertain') || c.includes('cinema') || c.includes('bioskop') || c.includes('cgv') || c.includes('xxi') || c.includes('game') || c.includes('movie')) return 'Entertainment';
+      return 'Other';
+    }
+
+    // ponytail: Basic rule-based simulation checks keywords in file name to return appropriate dummy receipts.
+    function mockExtractReceipt(fileName) {
+      const name = fileName.toLowerCase();
+      if (name.includes('kopi') || name.includes('starbucks') || name.includes('mcd') || name.includes('food') || name.includes('makan')) {
+        return {
+          merchant: 'Starbucks Coffee',
+          date: new Date().toISOString().substring(0, 10),
+          items: '1x Cafe Latte, 1x Cinnamon Roll',
+          total: 65000,
+          category: 'Food & Beverage'
+        };
+      } else if (name.includes('grab') || name.includes('gojek') || name.includes('shell') || name.includes('ride') || name.includes('pertamina')) {
+        return {
+          merchant: 'Gojek Ride',
+          date: new Date().toISOString().substring(0, 10),
+          items: 'Perjalanan GoRide',
+          total: 18000,
+          category: 'Transportation'
+        };
+      } else if (name.includes('tokopedia') || name.includes('uniqlo') || name.includes('shopee') || name.includes('h&m') || name.includes('baju')) {
+        return {
+          merchant: 'Tokopedia Store',
+          date: new Date().toISOString().substring(0, 10),
+          items: '1x Kaos Polos, 1x Gantungan Kunci',
+          total: 125000,
+          category: 'Shopping'
+        };
+      } else if (name.includes('pln') || name.includes('listrik') || name.includes('token')) {
+        return {
+          merchant: 'PLN Prabayar',
+          date: new Date().toISOString().substring(0, 10),
+          items: 'Token Listrik 100k',
+          total: 102000,
+          category: 'Utilities'
+        };
+      } else if (name.includes('cgv') || name.includes('xxi') || name.includes('bioskop') || name.includes('cinema')) {
+        return {
+          merchant: 'XXI Cinema',
+          date: new Date().toISOString().substring(0, 10),
+          items: '2x Tiket Nonton, 1x Popcorn Sweet',
+          total: 95000,
+          category: 'Entertainment'
+        };
+      } else {
+        return {
+          merchant: 'Indomaret Point',
+          date: new Date().toISOString().substring(0, 10),
+          items: '1x Roti Kasur, 1x Aqua 1.5L',
+          total: 28500,
+          category: 'Food & Beverage'
+        };
+      }
+    }
+
+    // ==========================================
+    // DYNAMIC UI BINDING
+    // ==========================================
+    function updateAllUI() {
+      updateModeBadge();
+      updateUserProfileBar();
+      renderMetrics();
+      renderTrendChart();
+      renderCategoryBreakdown();
+      renderTransactionList();
+    }
+
+    function updateModeBadge() {
+      const badge = document.getElementById('mode-status-badge');
+      if (!badge) return;
+      if (appMode === 'cloud') {
+        badge.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--brand-orange);"><path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.54 0-1.1.1-1.6.3a6.5 6.5 0 1 0-10.2 6.2"/></svg>
+          Cloud Mode
+        `;
+        badge.style.borderColor = 'var(--brand-orange)';
+        badge.style.color = 'var(--brand-orange)';
+      } else {
+        badge.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          Sandbox Mode
+        `;
+        badge.style.borderColor = 'var(--border)';
+        badge.style.color = 'var(--text-muted)';
+      }
+    }
+
+    function updateUserProfileBar() {
+      const userProfile = document.getElementById('user-profile-info');
+      if (!userProfile) return;
+      if (appMode === 'cloud') {
+        let profile = { name: 'Pengguna Cloud', email: 'Terhubung ke Google Sheets' };
+        const storedProfile = sessionStorage.getItem('aurascan_user_profile');
+        if (storedProfile) {
+          try {
+            profile = JSON.parse(storedProfile);
+          } catch (e) { }
+        }
+        const avatarUrl = profile.picture || 'https://lh3.googleusercontent.com/a/default-user=s96-c';
+        userProfile.innerHTML = `
+          <div class="user-avatar" style="background-image: url('${avatarUrl}')"></div>
+          <div class="user-text">
+            <span class="user-name">${profile.name}</span>
+            <span class="user-email">${profile.email || 'Terhubung ke Google Sheets'}</span>
+          </div>
+          <button class="btn btn-sm btn-outline" onclick="logout()">Keluar</button>
+        `;
+      } else {
+        userProfile.innerHTML = `
+          <div class="user-avatar" style="background-color: var(--brand-orange-light); color: var(--brand-orange); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.8rem;">SB</div>
+          <div class="user-text">
+            <span class="user-name">Mode Sandbox (Offline)</span>
+            <span class="user-email">Data disimpan secara lokal di browser</span>
+          </div>
+          <button class="btn btn-sm btn-primary-outline" onclick="toggleAppMode()">Hubungkan Cloud</button>
+        `;
+      }
+    }
+  </script>
+</body>
+
+</html>

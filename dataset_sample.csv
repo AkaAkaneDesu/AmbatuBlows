@@ -1,0 +1,61 @@
+ID,Date,Merchant,Items,Total,Category
+1,2026-01-02,Starbucks,"1x Caffe Latte, 1x Butter Croissant",9.50,Food
+2,2026-01-03,Walmart,"Groceries, Toilet Paper, Shampoo",45.20,Shopping
+3,2026-01-05,Comcast,Internet Subscription,79.99,Utilities
+4,2026-01-08,Shell Gas,20 Gallons Unleaded,42.50,Others
+5,2026-01-10,Netflix,Standard Monthly Plan,15.49,Entertainment
+6,2026-01-12,McDonald's,"1x Big Mac Meal, 1x Apple Pie",12.30,Food
+7,2026-01-15,Target,"Bed Sheets, Desk Lamp",68.00,Shopping
+8,2026-01-18,PG&E,Electricity Bill,124.60,Utilities
+9,2026-01-20,Uber,Ride to Airport,35.00,Others
+10,2026-01-22,Spotify,Premium Family Plan,16.99,Entertainment
+11,2026-01-25,Domino's,2x Large Pepperoni Pizza,32.40,Food
+12,2026-01-28,Best Buy,"HDMI Cable, USB Hub",28.90,Shopping
+13,2026-02-01,Starbucks,"1x Caramel Macchiato, 1x Muffin",10.20,Food
+14,2026-02-03,AT&T,Mobile Phone Plan,65.00,Utilities
+15,2026-02-05,Chevron,Gasoline Refill,38.10,Others
+16,2026-02-07,AMC Theatres,"2x Movie Tickets, 1x Large Popcorn",34.50,Entertainment
+17,2026-02-10,Kroger,Weekly Groceries,87.40,Food
+18,2026-02-12,Amazon,Python Data Science Book,44.99,Shopping
+19,2026-02-15,City Water Dept,Monthly Water Bill,55.20,Utilities
+20,2026-02-18,CVS Pharmacy,"Cold Medicine, Bandages",18.75,Others
+21,2026-02-20,Steam Games,RPG Game Purchase,59.99,Entertainment
+22,2026-02-22,Whole Foods,"Organic Fruits, Vegetables, Milk",62.30,Food
+23,2026-02-25,IKEA,Bookshelf Assembly Kit,89.00,Shopping
+24,2026-02-28,Verizon,Home Fiber Internet,85.00,Utilities
+25,2026-03-02,Lyft,Ride to Downtown,18.50,Others
+26,2026-03-05,Starbucks,2x Caffe Latte,11.00,Food
+27,2026-03-07,Amazon,"Wireless Mouse, Keyboard",54.20,Shopping
+28,2026-03-10,Netflix,Standard Monthly Plan,15.49,Entertainment
+29,2026-03-12,Subway,"1x Footlong Sub, 1x Cookie",11.80,Food
+30,2026-03-15,PG&E,Electricity Bill,112.40,Utilities
+31,2026-03-18,Walgreens,Prescription Medication,22.10,Others
+32,2026-03-20,Disneyland,1x Single Day Admission Ticket,149.00,Entertainment
+33,2026-03-22,Chipotle,"1x Burrito Bowl, 1x Chips & Guac",14.50,Food
+34,2026-03-25,Target,"Storage Bins, Notebooks",32.70,Shopping
+35,2026-03-28,City Water Dept,Monthly Water Bill,51.80,Utilities
+36,2026-04-01,Shell Gas,Gasoline Refill,41.20,Others
+37,2026-04-03,Starbucks,"1x Cold Brew, 1x Croissant",8.90,Food
+38,2026-04-05,Amazon,Office Chair Cylinder,24.50,Shopping
+39,2026-04-08,Spotify,Premium Family Plan,16.99,Entertainment
+40,2026-04-10,Comcast,Internet Subscription,79.99,Utilities
+41,2026-04-12,Trader Joe's,Groceries and Snacks,48.60,Food
+42,2026-04-15,Uber,Ride to Dinner,15.50,Others
+43,2026-04-18,Zara,Spring Jacket,79.90,Shopping
+44,2026-04-20,Local Diner,"Breakfast Special, Coffee",14.25,Food
+45,2026-04-22,Steam Games,Indie Game Bundle,29.99,Entertainment
+46,2026-04-25,PG&E,Electricity Bill,105.10,Utilities
+47,2026-04-28,Post Office,Shipping Fees and Stamps,12.40,Others
+48,2026-05-01,Starbucks,"1x Iced Latte, 1x Scone",9.20,Food
+49,2026-05-03,Walmart,"Storage Box, Household Cleaners",38.40,Shopping
+50,2026-05-05,Netflix,Standard Monthly Plan,15.49,Entertainment
+51,2026-05-08,AT&T,Mobile Phone Plan,65.00,Utilities
+52,2026-05-10,Chipotle,"2x Burritos, 2x Drinks",28.80,Food
+53,2026-05-12,Chevron,Gasoline Refill,44.80,Others
+54,2026-05-15,Museum of Art,2x Entry Tickets,30.00,Entertainment
+55,2026-05-18,Local Diner,Lunch with Coworker,26.40,Food
+56,2026-05-20,Amazon,Charging Cables and Wall Adapter,19.99,Shopping
+57,2026-05-22,City Water Dept,Monthly Water Bill,53.40,Utilities
+58,2026-05-25,CVS Pharmacy,Sunscreen and Lip Balm,16.50,Others
+59,2026-05-28,Bowling Alley,Game of Bowling and Shoe Rental,22.00,Entertainment
+60,2026-05-30,Burger King,Double Whopper Meal,11.20,Food
