@@ -2105,7 +2105,11 @@
         } catch (e) {
           fileInput.value = '';
           hideLoader();
-          alert("Gagal memproses struk dengan Gemini: " + e.message);
+          let errMsg = e.message;
+          if (errMsg.includes('404') || errMsg.includes('NOT_FOUND') || errMsg.includes('not found')) {
+            errMsg += "\n\nTips: Error 404 ini biasanya terjadi jika Anda menggunakan API Key dari Google Cloud Console tanpa mengaktifkan 'Generative Language API'.\n\nDisarankan untuk membuat API Key baru langsung dari aistudio.google.com agar langsung aktif secara instan tanpa konfigurasi tambahan.";
+          }
+          alert("Gagal memproses struk dengan Gemini: " + errMsg);
         }
       } else {
         // ponytail: Image upload event triggers a mock scanning delay to simulate Gemini OCR.
