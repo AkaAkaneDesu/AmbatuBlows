@@ -43,3 +43,11 @@ Desktop.ini
 *.sln
 *.swp
 *.swo
+
+# Project docs and assignment files
+"Case-based Project - Cloud Computing Class 2026.pdf"
+implementation_plan.md
+laporan_proyek.md
+oauth_setup.md
+presentation_script.md
+
