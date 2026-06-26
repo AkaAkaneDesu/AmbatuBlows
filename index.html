@@ -486,9 +486,31 @@
       opacity: 0.6;
     }
 
-    /* ==========================================
-       BUTTONS & FLOATING ACTION BUTTON (FAB)
-       ========================================== */
+    .model-select {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 20px;
+      outline: none;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all var(--transition-speed);
+      backdrop-filter: blur(10px);
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+    }
+
+    .model-select:hover {
+      border-color: var(--brand-orange);
+    }
+
     .btn {
       display: inline-flex;
       align-items: center;
@@ -1088,6 +1110,11 @@
     <header class="app-header">
       <h1 class="logo-text">AuraScan</h1>
       <div style="display: flex; gap: 8px; align-items: center;">
+        <select id="gemini-model-select" class="model-select" onchange="saveSelectedModel()" title="Pilih Model AI">
+          <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+          <option value="gemini-3-flash">Gemini 3 Flash</option>
+          <option value="gemini-3.1-flash-lite">Gemini 3.1-Lite</option>
+        </select>
         <button class="btn btn-sm btn-outline" id="mode-status-badge" onclick="toggleAppMode()"
           style="border-radius: 20px; font-size: 0.75rem; padding: 6px 12px; gap: 6px; display: inline-flex; align-items: center; cursor: pointer; transition: all var(--transition-speed);">
           <!-- Injected by JS -->
@@ -1304,11 +1331,11 @@
   <script>
     // ponytail: Configuration settings for Google Cloud Integration
     let OAUTH_CLIENT_ID = '414618681340-a80f8pjvf3m8er3dq0vpu5ah8ipd10m9.apps.googleusercontent.com'; // Leave blank to prompt on runtime or edit directly
-
     let appMode = 'sandbox'; // ponytail: 'sandbox' or 'cloud'
     let spreadsheetId = null;
     let transactions = [];
     let currentSelectedTxId = null;
+    let selectedGeminiModel = localStorage.getItem('aurascan_selected_model') || 'gemini-3.5-flash';
 
     // Load initial mockup if local storage is empty
     const DEFAULT_MOCK = [
@@ -1328,6 +1355,10 @@
     // ==========================================
     // ponytail: Checks for existing OAuth token on load to automatically restore the Cloud Mode state.
     window.addEventListener('load', async () => {
+      const selectEl = document.getElementById('gemini-model-select');
+      if (selectEl) {
+        selectEl.value = selectedGeminiModel;
+      }
       const token = sessionStorage.getItem('aurascan_access_token');
       const clientId = localStorage.getItem('aurascan_client_id');
       if (token && clientId) {
@@ -1664,6 +1695,12 @@
           <!-- Moon Icon -->
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         `;
+      }
+    function saveSelectedModel() {
+      const select = document.getElementById('gemini-model-select');
+      if (select) {
+        selectedGeminiModel = select.value;
+        localStorage.setItem('aurascan_selected_model', selectedGeminiModel);
       }
     }
 
@@ -2216,13 +2253,13 @@
             }
 
             try {
-              // Try the latest Gemini 3.5 Flash first
-              const result = await executeGeminiScan(base64Data, mimeType, apiKey, 'gemini-3.5-flash');
+              // Try the user's selected model first
+              const result = await executeGeminiScan(base64Data, mimeType, apiKey, selectedGeminiModel);
               resolve(result);
             } catch (err) {
-              // Fall back to high-efficiency Gemini 3 Flash if 3.5 is busy or unavailable
-              if (err.status === 503) {
-                console.warn("gemini-3.5-flash is busy (503). Falling back to gemini-3-flash...");
+              // Fall back to high-efficiency Gemini 3 Flash if the selected model is busy (503) and is not already gemini-3-flash
+              if (err.status === 503 && selectedGeminiModel !== 'gemini-3-flash') {
+                console.warn(`${selectedGeminiModel} is busy (503). Falling back to gemini-3-flash...`);
                 const fallbackResult = await executeGeminiScan(base64Data, mimeType, apiKey, 'gemini-3-flash');
                 resolve(fallbackResult);
               } else {
