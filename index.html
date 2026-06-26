@@ -2154,7 +2154,8 @@
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-goog-user-project': OAUTH_CLIENT_ID.split('-')[0]
               },
               body: JSON.stringify({
                 contents: [
